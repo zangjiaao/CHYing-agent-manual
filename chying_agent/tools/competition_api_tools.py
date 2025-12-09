@@ -142,7 +142,31 @@ class CompetitionAPIClient:
         self.max_retries = 3
         self.retry_delay = 2.0
         
+        # ⭐ 手动模式支持
+        self.manual_mode = False
+        self.manual_challenges = []
+        self.manual_hints = {}
+        
         log_system_event(f"[API] 初始化比赛 API 客户端: {self.base_url}")
+
+    def enable_manual_mode(self):
+        """开启手动模式"""
+        self.manual_mode = True
+        log_system_event("[API] 已切换至手动模式 (Mock API)")
+
+    def set_manual_challenges(self, challenges: List[Dict]):
+        """设置手动模式的题目列表"""
+        self.manual_challenges = challenges
+        # 为每个题目生成默认提示
+        for challenge in challenges:
+            code = challenge.get("challenge_code")
+            if code:
+                self.manual_hints[code] = {
+                    "hint_content": "这是手动模式的模拟提示，实际比赛中会有具体的提示信息。",
+                    "penalty_points": 0,
+                    "first_use": True
+                }
+        log_system_event(f"[API] 已加载 {len(challenges)} 个手动题目")
     
     def _wait_for_rate_limit(self):
         """等待以满足请求频率限制"""
@@ -207,30 +231,26 @@ class CompetitionAPIClient:
             log_system_event(f"[API] 未知错误: {status_code} - {error_detail}")
             raise CompetitionAPIError(f"API 错误 ({status_code}): {error_detail}")
     
-    @retry_on_rate_limit(max_retries=5, base_delay=2.0)
+        return data
+    
     def get_challenges(self) -> Dict[str, Any]:
         """
         获取当前阶段赛题列表（带自动重试）
         
         Returns:
-            包含当前阶段和赛题列表的字典:
-            {
-                "current_stage": "debug" | "competition",
-                "challenges": [
-                    {
-                        "challenge_code": str,
-                        "difficulty": "easy" | "medium" | "hard",
-                        "points": int,
-                        "hint_viewed": bool,
-                        "solved": bool,
-                        "target_info": {
-                            "ip": str,
-                            "port": List[int]
-                        }
-                    }
-                ]
-            }
+            包含当前阶段和赛题列表的字典
         """
+        if self.manual_mode:
+            log_system_event("[API] (手动模式) 返回本地题目列表")
+            return {
+                "current_stage": "manual_mode",
+                "challenges": self.manual_challenges
+            }
+
+        return self._get_challenges_from_api()
+
+    @retry_on_rate_limit(max_retries=5, base_delay=2.0)
+    def _get_challenges_from_api(self) -> Dict[str, Any]:
         self._wait_for_rate_limit()
         
         url = f"{self.base_url}/api/v1/challenges"
@@ -246,22 +266,22 @@ class CompetitionAPIClient:
         
         return data
     
-    @retry_on_rate_limit(max_retries=5, base_delay=2.0)
+        return data
+    
     def get_hint(self, challenge_code: str) -> Dict[str, Any]:
-        """
-        查看指定赛题的提示信息（带自动重试）
-        
-        Args:
-            challenge_code: 赛题唯一标识码
-            
-        Returns:
-            提示信息字典:
-            {
-                "hint_content": str,
-                "penalty_points": int,
-                "first_use": bool
-            }
-        """
+        """查看指定赛题的提示信息"""
+        if self.manual_mode:
+            log_system_event(f"[API] (手动模式) 返回模拟提示: {challenge_code}")
+            return self.manual_hints.get(challenge_code, {
+                "hint_content": "无可用提示",
+                "penalty_points": 0,
+                "first_use": False
+            })
+
+        return self._get_hint_from_api(challenge_code)
+
+    @retry_on_rate_limit(max_retries=5, base_delay=2.0)
+    def _get_hint_from_api(self, challenge_code: str) -> Dict[str, Any]:
         self._wait_for_rate_limit()
         
         url = f"{self.base_url}/api/v1/hint/{challenge_code}"
@@ -281,23 +301,35 @@ class CompetitionAPIClient:
         
         return data
     
-    @retry_on_rate_limit(max_retries=5, base_delay=2.0)
+        return data
+
     def submit_answer(self, challenge_code: str, answer: str) -> Dict[str, Any]:
-        """
-        提交赛题答案（带自动重试）
-        
-        Args:
-            challenge_code: 赛题唯一标识码
-            answer: 答案内容（通常为 flag{...} 或 FLAG{...} 格式）
-            
-        Returns:
-            提交结果字典:
-            {
-                "correct": bool,
-                "earned_points": int,
-                "is_solved": bool
+        """提交赛题答案"""
+        if self.manual_mode:
+            log_security_event(
+                f"[手动模式] 捕获到 FLAG 提交",
+                {
+                    "challenge": challenge_code,
+                    "flag": answer
+                }
+            )
+            # 记录到本地文件，方便查看
+            try:
+                with open("manual_flags.txt", "a", encoding="utf-8") as f:
+                    f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {challenge_code}: {answer}\n")
+            except Exception:
+                pass
+                
+            return {
+                "correct": True,
+                "earned_points": 1000,
+                "is_solved": False
             }
-        """
+
+        return self._submit_answer_to_api(challenge_code, answer)
+
+    @retry_on_rate_limit(max_retries=5, base_delay=2.0)
+    def _submit_answer_to_api(self, challenge_code: str, answer: str) -> Dict[str, Any]:
         self._wait_for_rate_limit()
         
         url = f"{self.base_url}/api/v1/answer"

@@ -131,8 +131,8 @@ async def solve_single_challenge(
 
         # ⭐ 0. 自动获取提示（在所有信息收集之前）
         try:
-            from chying_agent.tools.competition_api_tools import CompetitionAPIClient
-            hint_client = CompetitionAPIClient()
+            from chying_agent.tools.competition_api_tools import get_api_client
+            hint_client = get_api_client()
             hint_data = hint_client.get_hint(challenge_code)
 
             hint_content = hint_data.get("hint_content", "")

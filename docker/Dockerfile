@@ -6,22 +6,12 @@ FROM docker.1ms.run/kalilinux/kali-rolling
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install system packages, Python, and common security tools
+RUN echo 'Acquire::https::Verify-Peer "false";' > /etc/apt/apt.conf.d/99ssl-verify-peer
+
 RUN set -eux; \
-    # 国内镜像优先，然后是国外镜像
-    mirrors="mirrors.cloud.tencent.com/kali mirrors.tencent.com/kali mirrors.aliyun.com/kali ftp.acc.umu.se/mirror/kali.org/kali mirror.math.princeton.edu/pub/kali"; \
-    success=0; \
-    for mirror in $mirrors; do \
-        echo "deb http://$mirror kali-rolling main contrib non-free non-free-firmware" > /etc/apt/sources.list; \
-        if apt-get update; then \
-            echo "Using Kali mirror: $mirror"; \
-            success=1; \
-            break; \
-        fi; \
-    done; \
-    if [ "$success" -ne 1 ]; then \
-        echo "ERROR: apt-get update failed for all configured mirrors" >&2; \
-        exit 1; \
-    fi; \
+    # Use default mirrors for better consistency and to avoid dependency held packages
+    apt-get update; \
+    apt-get -y dist-upgrade; \
     apt-get install -y --no-install-recommends \
     python3 \
     python3-venv \
@@ -159,10 +149,10 @@ RUN go install github.com/tomnomnom/assetfinder@latest
 # GraphQL Clairvoyance - GraphQL schema enumeration (使用 Xget 加速)
 RUN git clone https://xget-cfw.fireline.fun/gh/nikitastupin/clairvoyance.git /opt/tools/clairvoyance || true && \
     if [ -d /opt/tools/clairvoyance ]; then \
-      cd /opt/tools/clairvoyance && \
-      python3 -m venv venv && \
-      . venv/bin/activate && \
-      pip install . || true; \
+    cd /opt/tools/clairvoyance && \
+    python3 -m venv venv && \
+    . venv/bin/activate && \
+    pip install . || true; \
     fi
 
 # JWT Tool - JWT analysis and manipulation (使用 Xget 加速)
@@ -189,11 +179,11 @@ RUN set -eux; \
     else platform="linux_amd64"; fi; \
     # 使用 Xget 加速 GitHub API 访问
     KATANA_URL=$(curl -s https://api.github.com/repos/projectdiscovery/katana/releases/latest \
-      | grep -Eo '"browser_download_url"\s*:\s*"[^"]*' | cut -d '"' -f4 \
-      | grep -E "${platform}\\.zip$" | head -n1); \
+    | grep -Eo '"browser_download_url"\s*:\s*"[^"]*' | cut -d '"' -f4 \
+    | grep -E "${platform}\\.zip$" | head -n1); \
     HTTPX_URL=$(curl -s https://api.github.com/repos/projectdiscovery/httpx/releases/latest \
-      | grep -Eo '"browser_download_url"\s*:\s*"[^"]*' | cut -d '"' -f4 \
-      | grep -E "${platform}\\.zip$" | head -n1); \
+    | grep -Eo '"browser_download_url"\s*:\s*"[^"]*' | cut -d '"' -f4 \
+    | grep -E "${platform}\\.zip$" | head -n1); \
     echo "Fetching: $KATANA_URL"; \
     echo "Fetching: $HTTPX_URL"; \
     # 将下载链接转换为 Xget 加速链接
