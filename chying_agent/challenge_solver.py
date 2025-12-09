@@ -148,7 +148,17 @@ async def solve_single_challenge(
         except Exception as hint_error:
             log_system_event(
                 f"[自动提示] ⚠️ 获取提示失败: {str(hint_error)}",
-                level=logging.WARNING
+            )
+
+        # ⭐ 0.5. 注入用户手动输入的描述/提示
+        challenge_description = challenge.get("description", "")
+        if challenge_description:
+            messages_to_inject.append(
+                HumanMessage(content=f"📝 **用户描述/提示**\n\n{challenge_description}")
+            )
+            log_system_event(
+                f"[手动提示] ✅ 已注入用户描述: {challenge_code}",
+                {"description_preview": challenge_description[:30]}
             )
 
         # ⭐ 消息注入顺序设计说明：

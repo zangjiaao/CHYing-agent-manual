@@ -53,11 +53,13 @@ async def main():
     target_port = get_user_input("Target Port", "80")
     difficulty = get_user_input("Difficulty (easy/medium/hard)", "easy")
     points = int(get_user_input("Points", "100"))
+    description = get_user_input("Description/Hint", "")
     
     challenge = {
         "challenge_code": challenge_code,
         "difficulty": difficulty,
         "points": points,
+        "description": description,
         "hint_viewed": False,
         "solved": False,
         "target_info": {
