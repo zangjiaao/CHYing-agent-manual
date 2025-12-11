@@ -30,3 +30,6 @@ logs/
 
 *.tmp
 *.swp
+
+# flags.txt
+manual_flags.txt
