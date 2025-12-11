@@ -46,6 +46,12 @@ docker-compose up -d
 uv run main.py
 ```
 
+手动模式运行：
+
+```bash
+uv run manual_solve.py
+``` 
+
 ---
 
 ## 关键配置

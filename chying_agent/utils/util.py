@@ -117,9 +117,19 @@ async def retry_llm_call(llm_func, *args, max_retries=5, base_delay=2.0, limiter
             ])
             
             if not is_retryable:
+                # 尝试获取模型名称
+                model_name = "unknown"
+                if hasattr(llm_func, "__self__"):
+                    llm_instance = llm_func.__self__
+                    if hasattr(llm_instance, "model_name"):
+                        model_name = llm_instance.model_name
+                    elif hasattr(llm_instance, "model"):
+                        model_name = llm_instance.model
+
                 # 非可重试错误，直接抛出
                 log_system_event(
                     f"[LLM错误] ❌ 非可重试错误，直接抛出: {error_msg}",
+                    {"model": model_name},
                     level=logging.ERROR
                 )
                 raise

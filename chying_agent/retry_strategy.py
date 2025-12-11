@@ -55,7 +55,7 @@ class RetryStrategy:
         self.minimax_llm = ChatDeepSeek(
             api_base=config.llm_base_url,
             api_key=config.llm_api_key,
-            model="deepseek-v3.1-terminus",
+            model=config.llm_model_name,
             temperature=0.7,
             max_tokens=12800,
             timeout=300,
